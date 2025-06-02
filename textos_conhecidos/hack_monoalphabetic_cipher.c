@@ -6,10 +6,6 @@
 #include <errno.h>
 #include "text_formatation.h"
 
-#define ALPHABET_SIZE 26
-#define MAX_TEXT_SIZE 1000000 // 1MB
-#define CIPHER_SIZE 120
-
 struct monoalphabetic_transformation
 {
     char origin;
@@ -156,7 +152,7 @@ int is_possible_plaintext_of_cipher(char *plain_text, struct encrypted_char *par
     return 1;
 }
 
-void analyze_monoalphabetic_cipher(char *open_text, char *cipher)
+void find_plaintext(char *open_text, char *cipher)
 {
     size_t known_text_length = strlen(open_text);
     int *cipher_statistics = calculate_statistics(cipher, 0, CIPHER_SIZE);
@@ -206,6 +202,6 @@ int main()
 {
     char *open_text = load_text_file("textos_formatados/avesso_da_pele.txt");
     char *cipher = load_cipher_text("Cifrado/Mono/Grupo20_texto_cifrado.txt");
-    analyze_monoalphabetic_cipher(open_text, cipher);
+    find_plaintext(open_text, cipher);
     return 0;
 }
