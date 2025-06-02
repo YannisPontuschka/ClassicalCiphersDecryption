@@ -12,17 +12,17 @@ Esse projeto implementa ferramentas pra analisar e potencialmente quebrar cifras
 Comandos para linux.
 
 ```bash
-cd ClassicalCiphersDecryption
+cd ClassicalCiphersDecryption/textos_conhecidos
 ```
 
 compilação:
 ```bash
-gcc textos_conhecidos/hack_monoalphabetic_cipher.c -o textos_conhecidos/hack_cipher
+gcc hack_monoalphabetic_cipher.c -o textos_conhecidos/hack_cipher.exe
 ```
 
 Execução:
 ```bash
-cd textos_conhecidos && ./hack_cipher
+./hack_cipher.exe
 ```
 ## Requisitos
 
