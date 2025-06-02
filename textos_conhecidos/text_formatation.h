@@ -11,6 +11,12 @@
 #define SAVE_DIRECTORY "textos_formatados"
 #define READ_DIRECTORY "textos"
 
+struct encrypted_char
+{
+    char character;
+    int is_encrypted;
+};
+
 // Function to convert accented characters to non-accented ones
 char normalize_char(unsigned char c)
 {
@@ -99,17 +105,39 @@ void format_text(char *input, char *output)
     output[j] = '\0';
 }
 
-void read_file(FILE *known_file, char *text)
+char *load_text_file(char *file_path)
 {
+    char *text = malloc(MAX_TEXT_SIZE * sizeof(char));
+    FILE *file = fopen(file_path, "r");
+    if (!file)
+    {
+        printf("Error opening known text file\n");
+        free(text);
+        return NULL;
+    }
     size_t total_read = 0;
     size_t bytes_read;
-    while (!feof(known_file) && total_read < MAX_TEXT_SIZE - 1)
+    while (!feof(file) && total_read < MAX_TEXT_SIZE - 1)
     {
-        bytes_read = fread(text + total_read, 1, 1024, known_file);
+        bytes_read = fread(text + total_read, 1, 1024, file);
         total_read += bytes_read;
     }
     text[total_read] = '\0';
-    fclose(known_file);
+    fclose(file);
+    return text;
+}
+
+char *load_cipher_text(char *file_path)
+{
+    char *cipher_text = malloc((CIPHER_SIZE + 1) * sizeof(char));
+    FILE *cipher_file = fopen(file_path, "r");
+    if (cipher_file)
+    {
+        fgets(cipher_text, CIPHER_SIZE + 1, cipher_file);
+        cipher_text[CIPHER_SIZE] = '\0';
+        fclose(cipher_file);
+    }
+    return cipher_text;
 }
 
 void ensure_directory_exists(const char *path)

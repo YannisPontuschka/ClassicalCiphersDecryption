@@ -88,18 +88,9 @@ void print_key(struct monoalphabetic_key *key)
         printf("%c -> %c\n", key->transformations[i].origin, key->transformations[i].destination);
 }
 
-char *decrypt_ciphertext(char *ciphertext, struct monoalphabetic_key *key)
+struct encrypted_char *decrypt_ciphertext_partially(char *ciphertext, struct monoalphabetic_key *key)
 {
-    // Allocate extra space for color codes
-    // Green for transformed characters -> "\032[32m" -> occupies 5 bytes
-    // Red for untransformed characters -> "\032[31m" -> occupies 5 bytes
-    // Reset color -> "\032[0m" -> occupies 4 bytes
-    // Therefore, for each character displayed, we need to allocate 16 bytes
-    // +1 for the null terminator
-    char *decrypted_text = malloc(CIPHER_SIZE * 10 + 1);
-
-    // Position in the output string
-    int pos = 0;
+    struct encrypted_char *partially_decrypted_text = malloc(CIPHER_SIZE * sizeof(struct encrypted_char));
 
     for (int i = 0; i < CIPHER_SIZE; i++)
     {
@@ -108,18 +99,19 @@ char *decrypt_ciphertext(char *ciphertext, struct monoalphabetic_key *key)
         {
             if (key->transformations[j].destination == ciphertext[i])
             {
-                pos += sprintf(decrypted_text + pos, "\033[32m%c\033[0m", key->transformations[j].origin);
+                partially_decrypted_text[i].character = key->transformations[j].origin;
+                partially_decrypted_text[i].is_encrypted = 0;
                 found = 1;
                 break;
             }
         }
         if (!found)
         {
-            pos += sprintf(decrypted_text + pos, "\033[31m%c\033[0m", ciphertext[i]);
+            partially_decrypted_text[i].character = ciphertext[i];
+            partially_decrypted_text[i].is_encrypted = 1; // Still encrypted character
         }
     }
-    decrypted_text[pos] = '\0';
-    return decrypted_text;
+    return partially_decrypted_text;
 }
 
 struct monoalphabetic_key *deduce_partial_key(int *current_plaintext_statistics, int *cipher_statistics)
@@ -152,70 +144,68 @@ struct monoalphabetic_key *deduce_partial_key(int *current_plaintext_statistics,
     return monoalphabetic_key;
 }
 
-int main()
+int is_possible_plaintext_of_cipher(char *plain_text, struct encrypted_char *partially_decrypted_text)
 {
-    char *formatted_text = malloc(MAX_TEXT_SIZE * sizeof(char));
-    FILE *formatted_file = fopen("textos_formatados/avesso_da_pele.txt", "r");
-    if (!formatted_file)
+    size_t length = strlen(plain_text);
+    for (int i = 0; i < length; i++)
     {
-        printf("Error opening known text file\n");
-        free(formatted_text);
-        return 1;
+        if (partially_decrypted_text[i].is_encrypted == 0 &&
+            partially_decrypted_text[i].character != plain_text[i])
+            return 0;
     }
-    read_file(formatted_file, formatted_text);
+    return 1;
+}
 
-    size_t known_text_length = strlen(formatted_text);
-    int *cipher_statistics;
-    int *sorted_cipher_statistics;
-    char ciphertext[CIPHER_SIZE + 1];
-    FILE *cipher_file = fopen("Cifrado/Mono/Grupo12_texto_cifrado.txt", "r");
-    if (cipher_file)
-    {
-        fgets(ciphertext, CIPHER_SIZE + 1, cipher_file);
-        ciphertext[CIPHER_SIZE] = '\0';
-        cipher_statistics = calculate_statistics(ciphertext, 0, CIPHER_SIZE);
-        sorted_cipher_statistics = sort_statistics(cipher_statistics);
-        fclose(cipher_file);
-    }
+void analyze_monoalphabetic_cipher(char *open_text, char *cipher)
+{
+    size_t known_text_length = strlen(open_text);
+    int *cipher_statistics = calculate_statistics(cipher, 0, CIPHER_SIZE);
+    int *sorted_cipher_statistics = sort_statistics(cipher_statistics);
     int number_of_possible_plaintexts = known_text_length - CIPHER_SIZE + 1;
-    int count_equal_statistics = 0;
+    int count_possible_plaintexts = 0;
     char *current_plaintext;
     for (int i = 0; i < number_of_possible_plaintexts; i++)
     {
-        current_plaintext = extract_plaintext(formatted_text, i);
-        int *current_plaintext_statistics = calculate_statistics(formatted_text, i, i + CIPHER_SIZE);
+        current_plaintext = extract_plaintext(open_text, i);
+        int *current_plaintext_statistics = calculate_statistics(open_text, i, i + CIPHER_SIZE);
         int *sorted_current_plaintext_statistics = sort_statistics(current_plaintext_statistics);
         int is_equal = compare_statistics(sorted_cipher_statistics, sorted_current_plaintext_statistics);
         if (is_equal)
         {
-            count_equal_statistics++;
             struct monoalphabetic_key *key = deduce_partial_key(current_plaintext_statistics, cipher_statistics);
-            printf("--------------------------------\n");
-            printf("Probable transformations: \n");
-            print_key(key);
 
-            char *decrypted_text = decrypt_ciphertext(ciphertext, key);
-            printf("(Partially) Decrypted text with discovered transformations:\n %s\n", decrypted_text);
-            printf("Plaintext: %s\n", current_plaintext);
-            printf("PlainText Statistics: ");
-            print_statistics(current_plaintext_statistics, CIPHER_SIZE);
-            printf("Cipher statistics: ");
-            print_statistics(cipher_statistics, CIPHER_SIZE);
-            free(decrypted_text);
+            struct encrypted_char *partially_decrypted_text = decrypt_ciphertext_partially(cipher, key);
+
+            if (is_possible_plaintext_of_cipher(current_plaintext, partially_decrypted_text))
+            {
+                count_possible_plaintexts++;
+                printf("--------------------------------\n");
+                printf("Possible Plaintext %d: %s\n", count_possible_plaintexts, current_plaintext);
+                printf("Probable transformations: \n");
+                print_key(key);
+                printf("--------------------------------\n");
+            }
             free(key);
-            printf("--------------------------------\n");
+            free(partially_decrypted_text);
         }
         free(current_plaintext_statistics);
         free(sorted_current_plaintext_statistics);
     }
-    if (count_equal_statistics == 1)
-        printf("Exactly one possible plaintext found.\n%s\nNo need to try others transformations.\n", current_plaintext);
-    else if (count_equal_statistics > 1)
-        printf("Possible plaintexts found with the same statistics: %d\n", count_equal_statistics);
+    if (count_possible_plaintexts == 1)
+        printf("Exactly one possible plaintext found.\n");
+    else if (count_possible_plaintexts > 1)
+        printf("Possible plaintexts found: %d\n", count_possible_plaintexts);
     else
         printf("No possible plaintext found\n");
 
     free(current_plaintext);
-    free(formatted_text);
+    free(open_text);
+}
+
+int main()
+{
+    char *open_text = load_text_file("textos_formatados/avesso_da_pele.txt");
+    char *cipher = load_cipher_text("Cifrado/Mono/Grupo20_texto_cifrado.txt");
+    analyze_monoalphabetic_cipher(open_text, cipher);
     return 0;
 }
