@@ -1,13 +1,13 @@
 # Decriptação de cifras clássicas
 
-Esse projeto implementa ferramentas pra analisar e potencialmente quebrar cifras clássicas do ramo da criptografia.
+Esse projeto implementa ferramentas pra analisar e potencialmente quebrar a cifras clássica monoalfabética do ramo da criptografia.
 
-## Project Structure
+## Estrutura
 
 - `textos_conhecidos/` - Diretório com cifras retiradas de textos conhecidos
 - `textos_desconhecidos/` - Diretório com cifras retiradas de textos desconhecidos
 
-## Compilação e execução para Cifra Monoalfabética com texto conhecido
+## Compilação e execução 
 
 Comandos para linux.
 
